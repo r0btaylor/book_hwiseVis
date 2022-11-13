@@ -1,0 +1,1261 @@
+---
+title: <p style="color:#1d6cac"> hwiseVis </p>
+author: "Rob Taylor"
+subtitle: "A data visualisation web application created in the R programming language"
+output: 
+  html_document:
+    code_folding: hide
+bibliography: references.bib
+csl: harvard-university-of-the-west-of-england.csl
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache = FALSE)
+```
+
+```{r libraries, echo = FALSE, message = FALSE}
+# load libraries
+if(!require("dplyr")) {
+  install.packages("dplyr")
+  library(dplyr)  
+}
+
+if(!require("kableExtra")) {
+  install.packages("kableExtra")
+  library(kableExtra)  
+}
+
+if(!require("excel.link")) {
+  install.packages("excel.link")
+  library(excel.link)  
+}
+
+if(!require("stringr")) {
+  install.packages("stringr")
+  library(stringr)  
+}
+
+if(!require("skimr")) {
+  install.packages("skimr")
+  library(skimr)  
+}
+
+if(!require("ggplot2")) {
+  install.packages("ggplot2")
+  library(ggplot2)  
+}
+
+if(!require("plotly")) {
+  install.packages("plotly")
+  library(plotly)  
+}
+
+if(!require("sf")) {
+  install.packages("sf")
+  library(sf)
+}
+
+if(!require("leaflet")) {
+  install.packages("leaflet")
+  library(leaflet)
+}
+```
+
+
+# {.tabset}
+
+
+## Introduction
+
+<p style="font-size:18pt; font-style:bold; color:#1d6cac">
+Introduction
+</p>
+
+This project was completed as part of a paid internship with the International Water Security Network and was the dissertation project for an MSc in Data Science at the University of the West of England. 
+
+The project was written in the R programming language and utilises the `shiny` library [@chang_2022] to create an interactive web application to provide users with an accessible interface to execute R code on the application backend.
+
+All work was completed independently over a development life cycle of approximately 14 weeks.
+
+<p style="font-size:18pt; font-style:bold; color:#1d6cac">
+Project Aims
+</p>
+
+The purpose of the project was to create a tool that could enable non-technical users to independently access and utilise raw data.     
+
+End users include professionals from the humanitarian sector currently working in response to the refugee crisis in Bangladesh to ensure affected communities receive adequate access to water, sanitation and hygiene facilities.   
+
+The tool I have created provides non-technical users with a platform that enables them to independently extract insight from data through a range of analytical and visualisation tools. Automatic data cleansing and an easy to use graphical interface removes the skills barrier that may prevent sector professionals from utilising data to enhance the effectiveness of aid initiatives in the region.
+
+<p style="font-size:18pt; font-style:bold; color:#1d6cac">
+Project Pitch Video
+</p>
+
+```{r pitch_vid, out.width = "100%", echo = FALSE, message = FALSE}
+if(!require("vembedr")) {
+  install.packages("vembedr")
+  library(vembedr)
+}
+
+use_align(embed_youtube("mbkr-IlcVZM", frameborder = 0, allowfullscreen = TRUE), align = "center")
+```
+## Application Summary
+<p style="font-size:18pt; font-style:bold; color:#1d6cac">
+    Feature Walkthrough
+</p>
+```{r feat_vid, out.width = "100%", echo = FALSE, message = FALSE}
+use_align(embed_youtube("5PkidWLumo8", frameborder = 0, allowfullscreen = TRUE), align = "center")
+```
+***
+
+<p style="font-size:18pt; font-style:bold; color:#1d6cac">
+    Live Demo
+</p>
+Click thumbnail to view a live demo version of the application.   
+
+<p align="center">
+[![demo app link](https://i.imgur.com/LBBfo3Om.png)](https://hwisevis.shinyapps.io/hwiseVis/)
+</p>
+
+> Note: A sample dataset is pre-loaded for demonstration purposes. File import and password entry widgets are retained for illustration only.
+
+***
+<p style="font-size:18pt; font-style:bold; color:#1d6cac">
+    Code Repository
+</p>
+
+All code is available via my GitHub repository.    
+Functionning sample data for application use is located in the `/data` folder.
+
+<p align="center">
+[![git hub link](https://i.imgur.com/9okqBaDt.png)](https://github.com/r0btaylor/shiny_Visualiser/blob/main/README.md)
+</p>
+
+***
+
+## Data, Cleansing & Processing {.tabset .tabset-fade .tabset-pills}
+
+### Data {.tabset .tabset-fade .tabset-pills}
+
+```{r logos, out.width="50%", fig.align = "center", echo = FALSE}
+knitr::include_graphics("https://i.imgur.com/y1j0u48.png")
+```
+
+<p style="font-size:18pt; font-style:bold; color:#1d6cac">
+    Socioeconomic Survey
+</p>
+
+In January 2022, a consortium of specialist practitioners and researchers from the United Nations High Council for Refugees (UNHCR), Oxfam, Ground Water Relief (GWR), Asian University for Women (AUW), and University of the West of England (UWE) collaborated to undertake a detailed socioeconomic survey of water usage in the Teknaf district of Bangladesh.
+
+The survey gathered data from 462 members of the refugee and host communities.
+
+<p style="font-size:18pt; font-style:bold; color:#1d6cac">
+    Survey Questions
+</p>
+
+Survey questionnaire was composed of the following question categories:
+```{r questions}
+questions <- read.csv("../data/questions_table.csv", header =TRUE)
+colnames(questions) <- c("Variable Code", "Question Text")
+# general
+general <- questions[c(1:9),]
+# sociodemographic
+sd <- questions[grepl("sd", questions[,1]),]
+# work
+work <- questions[questions$`Variable Code` %in% c("w1_1","w2","w3","w4","w5","w5","w6","w7", "w8"),]
+# perceptions
+perc <- questions[questions$`Variable Code` %in% c("p1","p2","p3","p4","p5"),]
+# water insecurity
+hw <- questions[grepl("hw", questions[,1]),]
+# water access & utility
+wat <- questions[grepl("wat", questions[,1]),]
+# livelihood activities
+liv <- questions[grepl("liv", questions[,1]),]
+# paying for water
+pay <- questions[grepl("pay", questions[,1]),]
+#wellbeing
+wb <- questions[grepl("wb", questions[,1]),]
+```
+
+#### Sociodemographic
+```{r sd}
+kable(sd, row.names = F) %>%
+  kable_styling("striped", "condensed", full_width = FALSE) %>%
+  scroll_box(width = "100%", height = "400px")
+```
+***
+
+#### Work
+```{r work}
+kable(work, row.names = F) %>%
+  kable_styling("striped", "condensed", full_width = FALSE) %>%
+  scroll_box(width = "100%")
+```
+***
+
+#### Perceptions
+```{r perc}
+kable(perc, row.names = F) %>%
+  kable_styling("striped", "condensed", full_width = FALSE) %>%
+  scroll_box(width = "100%")
+```
+***
+
+#### Water Insecurity
+```{r hw}
+kable(hw, row.names = F) %>%
+  kable_styling("striped", "condensed", full_width = FALSE) %>%
+  scroll_box(width = "100%", height = "400px")
+```
+***
+
+#### Access & Utility
+```{r wat}
+kable(wat, row.names = F) %>%
+  kable_styling("striped", "condensed", full_width = FALSE) %>%
+  scroll_box(width = "100%", height = "400px")
+```
+***
+
+#### Livelihood
+```{r liv}
+kable(liv, row.names = F) %>%
+  kable_styling("striped", "condensed", full_width = FALSE) %>%
+  scroll_box(width = "100%", height = "400px")
+```
+***
+
+#### Paying for Water
+```{r pay}
+kable(pay, row.names = F) %>%
+  kable_styling("striped", "condensed", full_width = FALSE) %>%
+  scroll_box(width = "100%")
+```
+***
+
+#### Wellbeing
+```{r wb}
+kable(wb, row.names = F) %>%
+  kable_styling("striped", "condensed", full_width = FALSE) %>%
+  scroll_box(width = "100%", height = "400px")
+```
+***
+
+### Cleansing & Processing {.tabset .tabset-fade .tabset-pills}
+
+All data cleansing and processing is performed automatically upon successful import of the survey dataset into the application. No interaction or experience in data processing is required from the end user.
+
+The dataset is provided as a password protected, single sheet .xlsx file that is imported using the `excel.link` library [@demin_excellink_2021].
+
+<p style="font-size:18pt; font-style:bold; color:#1d6cac">
+    Data Structures
+</p>
+
+Four data objects are created in total:
+
+```{r data_struc, echo = FALSE, out.width = "80%", fig.align = "center"}
+knitr::include_graphics("https://i.imgur.com/rL00TEq.png")
+```
+<p style="font-size:18pt; font-style:bold; color:#1d6cac">
+    Data Objects
+</p>
+ 
+#### Raw Data
+
+An initial `raw_data` object is created to store the entire dataset. Only minimal transformations to support indexing are performed:
+
+-   All characters converted to lower case.
+-   Column names set as variable codes.
+-   Digits appended to ensure column names are unique.
+
+```{r raw_data}
+# import data
+raw_data <- try(xl.read.file("../data/demo_data.xlsx",
+                           header = FALSE,
+                           password =  "password"))
+
+# Change all chars to lowercase
+raw_data <- data.frame(sapply(raw_data, tolower))
+
+# If row 1 (variable code) is blank, fill with row 2 (filed name)
+for (i in 1: ncol(raw_data)) {
+      ifelse(is.na(raw_data[1, i]), raw_data[1, i] <- raw_data[2, i ], raw_data[1, i])
+    }
+    
+# Set row 1 as colnames and then remove row 1
+colnames(raw_data) <- raw_data[1, ]
+raw_data <- raw_data[-1, ]
+
+# Append digits to make colnames unique
+colnames(raw_data) <- make.unique(colnames(raw_data), sep = "_")
+
+kable(head(raw_data)) %>%
+  kable_styling("striped", "condensed", full_width = FALSE) %>%
+  scroll_box(width = "100%", height = "400px")
+```
+
+------------------------------------------------------------------------
+
+#### Numeric Data
+
+A `num_data` object is created for use in plotting and visualisation. All survey responses (except free text and factor data) are transformed to the numeric code as defined in the survey.
+
+The following transformations are applied:
+
+-   Variables of no use to application functionality are dropped.
+-   Survey responses converted to numeric code.
+-   Multiple choice questions encoded as expanded binary responses are collapsed.
+-   Data classes corrected.
+-   Various instances of inconsistent recording rectified (i.e. sd9: 'Years since leaving Myanmar' encoded variously as number of years as well as actual year).
+-   Various new variables computed and added (i.e. Total HWISE score calculated from all HW response variables).
+
+```{r num_data}
+# Drop unneeded columns
+num_data <- select(raw_data,
+             "location",
+             "union",
+             "ward",
+             "village",
+             "camp",
+             "block",
+             "gps-latitude",
+             "gps-longitude",
+             "sex",
+             starts_with(c("sd","w","p","hw","wat","liv","wb")),
+             -c("sd5","sd13_1","sd16_1","sd20_1","w1","wat12",
+                "wat12_6","wat13","wat13_1","wat13_2","wat14_4","wat15",
+                "liv1","liv4")) %>%
+  slice(-1)
+    
+# Replace text responses with numeric codes ----
+
+## True / False
+num_data[ , ] <- apply(num_data[ , ], 2, function(x) {
+  x = replace(x, which(x=="true"),1)
+  x = replace(x, which(x=="false"), 0)
+})
+
+## sd questions
+num_data[, grepl("sd", names(num_data))] <- apply(num_data[,grepl("sd", names(num_data))], 2, function(x){
+  x = replace(x, which(x=="myself"|x=="single"|x=="primary_school"|x=="concrete/brick"|x=="owned"|x=="wood"),1)
+  x = replace(x, which(x=="my_spouse"|x=="divorced"|x=="secondary_school"|x=="processed_wood"|x=="rented"|x=="gas_bottles"),2)
+  x = replace(x, which(x=="an_adult_child"|x=="adult_child"|x=="widowed"|x=="university_college"|x=="wood/canvas/plastic"|x=="allocated/given_by_authorities"),3)
+  x = replace(x, which(x=="a_grandparent"|x=="married"|x=="no_formal_education"),4)
+})
+### "other" not consistently recorded
+num_data[c("sd1","sd4","sd12","sd13")][num_data[c("sd1","sd4","sd12","sd13")] == "other"] <- 5
+num_data["sd16"][num_data["sd16"] == "other"] <- 4
+num_data["sd20"][num_data["sd20"] == "other"] <- 3
+
+## hw questions
+num_data[, grepl("hw", names(num_data))] <- apply(num_data[, grepl("hw",names(num_data))], 2, function(x){
+  x = replace(x, which(x=="0_times"|x=="announced/scheduled"), 1)
+  x = replace(x, which(x=="1-2_times"|x=="unexpected"), 2)
+  x = replace(x, which(x=="3-10_times"), 3)
+  x = replace(x, which(x=="11-20_times"), 4)
+  x = replace(x, which(x=="more_than_20_times"), 5)
+  x = replace(x, which(x=="not_applicable"), 88)
+  x = replace(x, which(x=="dont know"), 99)
+})
+
+## wat questions
+num_data[, grepl("wat", names(num_data))] <- apply(num_data[, grepl("wat",names(num_data))], 2, function(x){
+  x = replace(x, which(x=="no"), 0)
+  x = replace(x, which(x=="piped_water_to_dwelling"|x=="yes"), 1)
+  x = replace(x, which(x=="stand_pipe"|x=="dont know"), 2)
+  x = replace(x, which(x=="borehole/tubewell"), 3)
+  x = replace(x, which(x=="protected_dug_well"), 4)
+  x = replace(x, which(x=="unprotected_dug_well"), 5)
+  x = replace(x, which(x=="protected_sping"), 6)
+  x = replace(x, which(x=="unprotected_spring"), 7)
+  x = replace(x, which(x=="rainwater_collection"), 8)
+  x = replace(x, which(x=="small_water_vendor"), 9)
+  x = replace(x, which(x=="tanker_truck"), 10)
+  x = replace(x, which(x=="bottled_water"), 11)
+  x = replace(x, which(x=="bagged_sachet_water"), 12)
+  x = replace(x, which(x=="surface_water_pond_river_lake"), 13)
+  x = replace(x, which(x=="other_person"), 14)
+  x = replace(x, which(x=="other"), 15)
+})
+
+## liv questions
+num_data[, grepl("liv",names(num_data))] <- apply(num_data[, grepl("liv",names(num_data))], 2, function(x){
+  x = replace(x, which(x=="piped_water_to_dwelling"|x=="yes_i_own_the_businesses"), 1)
+  x = replace(x, which(x=="stand_pipe"|x=="no_i_work_for_somebody_else"), 2)
+  x = replace(x, which(x=="borehole/tubewell"), 3)
+  x = replace(x, which(x=="protected_dug_well"), 4)
+  x = replace(x, which(x=="unprotected_dug_well"), 5)
+  x = replace(x, which(x=="protected_sping"), 6)
+  x = replace(x, which(x=="unprotected_spring"), 7)
+  x = replace(x, which(x=="rainwater_collection"), 8)
+  x = replace(x, which(x=="small_water_vendor"), 9)
+  x = replace(x, which(x=="tanker_truck"), 10)
+  x = replace(x, which(x=="bottled_water"), 11)
+  x = replace(x, which(x=="bagged_sachet_water"), 12)
+  x = replace(x, which(x=="surface_water_pond_river_lake"), 13)
+  x = replace(x, which(x=="other_person"), 14)
+  x = replace(x, which(x=="other"), 15)
+  x = replace(x, which(is.na(x)), 88)
+  })
+
+## pay questions
+num_data[, grepl("pay", names(num_data))] <- apply(num_data[, grepl("pay",names(num_data))], 2, function(x){
+  x=replace(x, which(x=="not_important_at_all"|x=="fixed_cost_per_month"),1)
+  x=replace(x, which(x=="neither_imp_nor_unimportant"|x=="fixed_cost_per_amount_"),2)
+  x=replace(x, which(x=="somewhat_important"|x=="vc_permonth_on_set_factors"),3)
+  x=replace(x, which(x=="very_important"|x=="variable_cost_per_amount_or_use"),4)
+  x=replace(x, which(x=="no_fixed_payment_is_made"),5)
+  x=replace(x, which(x=="it_is_free"),6)
+  x=replace(x, which(x=="dont_know"),7)
+})
+
+## wb questions
+num_data[, grepl("wb", names(num_data))] <- apply(num_data[, grepl("wb",names(num_data))], 2, function(x){
+  x = replace(x, which(x=="never"),0)
+  x = replace(x, which(x=="very_dissatisfied"|x=="better_health_services"|x=="poor"|x=="almost_never"),1)
+  x = replace(x, which(x=="somewhat_dissatisfied"|x=="safe_water_services"|x=="fair"|x=="sometimes"),2)
+  x = replace(x, which(x=="somewhat_satisfied"|x=="access_to_education"|x=="good"|x=="fairly_often"),3)
+  x = replace(x, which(x=="very_satisfied"|x=="better_communication_with_host_communities"|x=="very_good"|x=="very_often"),4)
+  x = replace(x, which(x=="safe_return_to_myanmar"|x=="excellent"),5)
+  x = replace(x, which(x=="other"),6)
+})
+
+# Define numeric variables ----
+num_data <- num_data %>%
+  mutate(across(-c("location",
+                   "union",
+                   "ward",
+                   "village",
+                   "camp",
+                   "block",
+                   "sex",
+                   "sd11_2",
+                   "sd11_3",
+                   "w8",
+                   "wat8",
+                   "wat14_3",
+                   "wat16",
+                   "wat17",
+                   "liv5",
+                   "liv6"), as.numeric))
+    
+# Re-code for consistency ----
+
+## Irregular 'ngo' recording
+num_data["sd11_2"][num_data["sd11_2"] == "ngos"] <- "ngo"
+
+## camp names
+num_data$camp[grepl("nayapara", num_data$camp)] <- "Nayapara Refugee Camp"
+num_data$camp <- sapply(num_data$camp, function(x){
+  x = replace(x, which(x=="24"), "Camp 24")
+  x = replace(x, which(x=="25"), "Camp 25")
+  x = replace(x, which(x=="26"), "Camp 26")
+  x = replace(x, which(x=="27"), "Camp 27")
+})
+
+## irregular sd9
+for(i in 1:nrow(num_data)) {
+  if ((!is.na(num_data[i,"sd9"])) & (num_data[i,"sd9"] < 1900)) {num_data[i,"sd9"] = 2022 - num_data[i,"sd9"]}
+}
+    
+# Compute new variables ----
+
+## Overall HWISE score
+df_hw <- num_data %>%
+  select(starts_with("hw"), -("hw2a"))
+
+num_data$hw <- rowSums(pmin(as.matrix(df_hw - 1), 3))
+rm(df_hw)
+
+num_data <- num_data %>% 
+  relocate(hw, .before = hw1)
+    
+## Time to collect per week
+num_data <- num_data %>% 
+  mutate(wat5a = (wat4 * wat5) * 7) %>%
+  relocate(wat5a, .after = wat5)
+## Grouped version
+num_data$wat5b <- sapply(num_data$wat5a, function(x){
+  x = replace(x, which(x<=100), 1)
+  x = replace(x, which(x>100 & x<=200), 2)
+  x = replace(x, which(x>200 & x<=300), 3)
+  x = replace(x, which(x>300 & x<=400), 4)
+  x = replace(x, which(x>400 & x<=500), 5)
+  x = replace(x, which(x>500 & x<=600), 6)
+  x = replace(x, which(x>600), 7)
+})
+num_data <- num_data %>% relocate(wat5b, .after = wat5a)
+    
+## Collapse boy/girl under 18 to single var
+num_data <- num_data %>% 
+  mutate(sd6_ = sd6 + sd6_1) %>%
+  relocate(sd6_, .before = sd6) %>%
+  select(-c(sd6, sd6_1))
+    
+# Collapse multiple choice binary questions ----
+    
+## sd5
+# collapse to sd5_ * binaries dropped
+num_data <- num_data %>%
+  mutate(
+    sd5_ = case_when(
+      sd5_6 == 1 ~ 6,
+      sd5_1 == 1 & sd5_2 == 0 & sd5_3 == 0 & sd5_4 == 0 & sd5_5 == 0 & sd5_6 ==0 ~ 1,
+      sd5_1 == 0 & sd5_2 == 1 & sd5_3 == 0 & sd5_4 == 0 & sd5_5 == 0 & sd5_6 ==0 ~ 2,
+      sd5_1 == 0 & sd5_2 == 0 & sd5_3 == 1 & sd5_4 == 0 & sd5_5 == 0 & sd5_6 ==0 ~ 3,
+      sd5_1 == 0 & sd5_2 == 0 & sd5_3 == 0 & sd5_4 == 1 & sd5_5 == 0 & sd5_6 ==0 ~ 4,
+      sd5_1 == 0 & sd5_2 == 0 & sd5_3 == 0 & sd5_4 == 0 & sd5_5 == 1 & sd5_6 ==0 ~ 5,
+      TRUE ~ 6)
+  ) %>%
+  relocate(sd5_, .before = sd5_1) %>%
+  select(-c(sd5_1, sd5_2, sd5_3, sd5_4, sd5_5, sd5_6))
+
+## wat12
+# collapse in sd12_ * binaries retained
+num_data <- num_data %>%
+  mutate(
+    wat12_ = case_when(
+      wat12_1 == 1 & wat12_2 == 0 & wat12_3 == 0 & wat12_4 == 0 & wat12_5 == 0 ~ 1,
+      wat12_1 == 0 & wat12_2 == 1 & wat12_3 == 0 & wat12_4 == 0 & wat12_5 == 0 ~ 2,
+      wat12_1 == 0 & wat12_2 == 0 & wat12_3 == 1 & wat12_4 == 0 & wat12_5 == 0 ~ 3,
+      wat12_1 == 0 & wat12_2 == 0 & wat12_3 == 0 & wat12_4 == 1 & wat12_5 == 0 ~ 4,
+      wat12_1 == 0 & wat12_2 == 0 & wat12_3 == 0 & wat12_4 == 0 & wat12_5 == 1 ~ 0,
+      TRUE ~ 5
+    )
+  ) %>%
+  relocate(wat12_, .before = wat12_1)
+## Create binary wat12_6 "combined methods"
+num_data <- num_data %>%
+  mutate(
+    wat12_6_ = case_when(
+      wat12_ == 5 ~ 1,
+      TRUE ~ 0
+    )
+  ) %>%
+  relocate(wat12_6_, .after = wat12_5)
+    
+## wat15
+# collapse into wat15_ * binaries retained
+for(i in 1:nrow(num_data)) {
+  if(num_data[i, "wat15_1"] == 1 & rowSums(num_data[i, c("wat15_2","wat15_3","wat15_4","wat15_5","wat15_6","wat15_7","wat15_8","wat15_9","wat15_10","wat15_11","wat15_12")]) == 0) {num_data[i, "wat15_"] = 1}
+  else if(num_data[i, "wat15_2"] == 1 & rowSums(num_data[i, c("wat15_1","wat15_3","wat15_4","wat15_5","wat15_6","wat15_7","wat15_8","wat15_9","wat15_10","wat15_11","wat15_12")]) == 0) {num_data[i, "wat15_"] = 2}
+  else if(num_data[i, "wat15_3"] == 1 & rowSums(num_data[i, c("wat15_1","wat15_2","wat15_4","wat15_5","wat15_6","wat15_7","wat15_8","wat15_9","wat15_10","wat15_11","wat15_12")]) == 0) {num_data[i, "wat15_"] = 3}
+  else if(num_data[i, "wat15_4"] == 1 & rowSums(num_data[i, c("wat15_1","wat15_2","wat15_3","wat15_5","wat15_6","wat15_7","wat15_8","wat15_9","wat15_10","wat15_11","wat15_12")]) == 0) {num_data[i, "wat15_"] = 4}
+  else if(num_data[i, "wat15_5"] == 1 & rowSums(num_data[i, c("wat15_1","wat15_2","wat15_3","wat15_4","wat15_6","wat15_7","wat15_8","wat15_9","wat15_10","wat15_11","wat15_12")]) == 0) {num_data[i, "wat15_"] = 5}
+  else if(num_data[i, "wat15_6"] == 1 & rowSums(num_data[i, c("wat15_1","wat15_2","wat15_3","wat15_4","wat15_5","wat15_7","wat15_8","wat15_9","wat15_10","wat15_11","wat15_12")]) == 0) {num_data[i, "wat15_"] = 6}
+  else if(num_data[i, "wat15_7"] == 1 & rowSums(num_data[i, c("wat15_1","wat15_2","wat15_3","wat15_4","wat15_5","wat15_6","wat15_8","wat15_9","wat15_10","wat15_11","wat15_12")]) == 0) {num_data[i, "wat15_"] = 7}
+  else if(num_data[i, "wat15_8"] == 1 & rowSums(num_data[i, c("wat15_1","wat15_2","wat15_3","wat15_4","wat15_5","wat15_6","wat15_7","wat15_9","wat15_10","wat15_11","wat15_12")]) == 0) {num_data[i, "wat15_"] = 8}
+  else if(num_data[i, "wat15_9"] == 1 & rowSums(num_data[i, c("wat15_1","wat15_2","wat15_3","wat15_4","wat15_5","wat15_6","wat15_7","wat15_8","wat15_10","wat15_11","wat15_12")]) == 0) {num_data[i, "wat15_"] = 9}
+  else if(num_data[i, "wat15_10"] == 1 & rowSums(num_data[i, c("wat15_1","wat15_2","wat15_3","wat15_4","wat15_5","wat15_6","wat15_7","wat15_8","wat15_9","wat15_11","wat15_12")]) == 0) {num_data[i, "wat15_"] = 10}
+  else if(num_data[i, "wat15_11"] == 1 & rowSums(num_data[i, c("wat15_1","wat15_2","wat15_3","wat15_4","wat15_5","wat15_6","wat15_7","wat15_8","wat15_9","wat15_10","wat15_12")]) == 0) {num_data[i, "wat15_"] = 11}
+  else if(num_data[i, "wat15_12"] == 1 & rowSums(num_data[i, c("wat15_1","wat15_2","wat15_3","wat15_4","wat15_5","wat15_6","wat15_7","wat15_8","wat15_9","wat15_10","wat15_11")]) == 0) {num_data[i, "wat15_"] = 12}
+  else {num_data[i, "wat15_"] = 13}
+}
+num_data <- num_data %>%
+  relocate(wat15_, .before = wat15_1)
+    
+## liv4
+# Collapse into liv4_ * binaries dropped
+num_data <- num_data %>%
+  mutate(
+    liv4_ = case_when(
+      liv4_1 == 0 & liv4_2 == 0 & liv4_3 == 1 ~ 0,
+      liv4_1 == 1 & liv4_2 == 0 & liv4_3 == 0 ~ 1,
+      liv4_1 == 0 & liv4_2 == 1 & liv4_3 == 0 ~ 2,
+      TRUE ~ 3
+    )
+  ) %>%
+  relocate(liv4_, .before = liv4_1) %>%
+  select(-c(liv4_1, liv4_2, liv4_3))
+
+## liv1
+# Collapse into liv1_ * binaries retained
+num_data <- num_data %>%
+  mutate(
+    liv1_ = case_when(
+      liv1_1 == 1 & liv1_2 == 0 & liv1_3 == 0 & liv1_4 == 0 & liv1_5 == 0 & liv1_6 == 0 & liv1_7== 0 & liv1_8 == 0 & liv1_9 == 0  ~  1,
+      liv1_1 == 0 & liv1_2 == 1 & liv1_3 == 0 & liv1_4 == 0 & liv1_5 == 0 & liv1_6 == 0 & liv1_7== 0 & liv1_8 == 0 & liv1_9 == 0  ~  2,
+      liv1_1 == 0 & liv1_2 == 0 & liv1_3 == 1 & liv1_4 == 0 & liv1_5 == 0 & liv1_6 == 0 & liv1_7== 0 & liv1_8 == 0 & liv1_9 == 0  ~  3,
+      liv1_1 == 0 & liv1_2 == 0 & liv1_3 == 0 & liv1_4 == 1 & liv1_5 == 0 & liv1_6 == 0 & liv1_7== 0 & liv1_8 == 0 & liv1_9 == 0  ~  4,
+      liv1_1 == 0 & liv1_2 == 0 & liv1_3 == 0 & liv1_4 == 0 & liv1_5 == 1 & liv1_6 == 0 & liv1_7== 0 & liv1_8 == 0 & liv1_9 == 0  ~  5,
+      liv1_1 == 0 & liv1_2 == 0 & liv1_3 == 0 & liv1_4 == 0 & liv1_5 == 0 & liv1_6 == 1 & liv1_7== 0 & liv1_8 == 0 & liv1_9 == 0  ~  6,
+      liv1_1 == 0 & liv1_2 == 0 & liv1_3 == 0 & liv1_4 == 0 & liv1_5 == 0 & liv1_6 == 0 & liv1_7== 1 & liv1_8 == 0 & liv1_9 == 0  ~  7,
+      liv1_1 == 0 & liv1_2 == 0 & liv1_3 == 0 & liv1_4 == 0 & liv1_5 == 0 & liv1_6 == 0 & liv1_7== 0 & liv1_8 == 1 & liv1_9 == 0  ~  8,
+      liv1_1 == 0 & liv1_2 == 0 & liv1_3 == 0 & liv1_4 == 0 & liv1_5 == 0 & liv1_6 == 0 & liv1_7== 0 & liv1_8 == 0 & liv1_9 == 1  ~  0,
+      TRUE ~ 9
+    )
+  ) %>%
+  relocate(liv1_, .before = liv1_1) 
+# create binary liv1_10_ "multiple income sources"
+num_data <- num_data %>%
+  mutate(
+    liv1_10_ = case_when(
+      liv1_ == 9 ~ 1,
+      TRUE ~ 0
+    )
+  ) %>% 
+  relocate(liv1_10_, .after = liv1_9)
+    
+# Replace NA vals ----
+num_data[is.na(num_data)] <- "NA"
+
+kable(head(num_data)) %>%
+  kable_styling("striped", "condensed", full_width = FALSE) %>%
+  scroll_box(width = "100%", height = "400px")
+  
+```
+
+------------------------------------------------------------------------
+
+#### Question Data
+
+A `q_data` object is created to store the question text for all items in the survey. The relevant row is extracted from `raw_data` and matched to the contents of `num_data`. String manipulation is performed using the `stringR` library [@wickham_2019] including the following:
+
+-   Capitalisation correction.
+-   Special character removal.
+-   Modifications to ensure brevity, consistency and enhance readability.
+
+```{r q_data}
+#extract question row
+q_data <- raw_data[1, ]
+    
+# Match cols to num_data
+q_data <- q_data[, colnames(q_data) %in% colnames(num_data)]
+
+# String formatting
+q_data <- q_data %>% mutate(across(everything(), 
+                              ~ str_replace(., "income_source_past_12_months_", "income_source:_") %>%
+                                str_replace("primary_way_household_treats_drinking_water","drinking_water_treatment:") %>%
+                                str_replace("your_household_experience_the_fewest_water_problems", "fewest_water_problems:") %>%
+                                str_replace("activities_are_you_engaged_in_for_household_food_production_or_income_generation", "income_generation:") %>%
+                                str_replace("_are_","_") %>%
+                                str_remove("_remittances") %>%
+                                str_replace("_the_","_") %>%
+                                str_replace("receiving_assistance","financial assistance: amount") %>%
+                                str_replace("assistance_from_what_source", "financial assistance: source") %>%
+                                str_replace("assistance_usage", "financial assistance: usage") %>%
+                                str_remove("_for_heating-cooking")  %>%
+                                str_remove("_food_for_work") %>%
+                                str_remove("_agriculture_and_animal") %>%
+                                str_remove("you_had_") %>%
+                                str_remove("ngo") %>%
+                                str_remove("do_you_think_it_is_for_you_") %>%
+                                str_replace_all("_and_","&") %>%
+                                str_replace_all("_"," ") %>%
+                                str_to_title)) %>% 
+  mutate(location = "Refugee Camp or Host Community",
+         sd2 = "Relationship Status",
+         sd4 = "Household: Responsible To Get Water",
+         sd7 = "Household: Adult Members",
+         sd8 = "Household: Elderly Members",
+         sd9 = "Left Myanmar",
+         sd13 = "House: Type",
+         sd14 = "House: No. of Rooms",
+         sd15 = "House: Has a Garden",
+         sd16 = "House: Ownership",
+         sd17 = "House: Electricity Supply",
+         sd18 = "House: Piped Water Supply",
+         sd19 = "House: Sewerage Connection",
+         sd21 = "Rate Community: Socioeconomic Standing",
+         sd22 = "Rate Community: Water Situation",
+         w8 = "Experienced Problems & Solutions",
+         p2 = "Women & Men: Equal Responsibility for Sanitation",
+         p3 = "Women & Men: Equal Awareness of Feedback Processes",
+         p4 = "Women & Men: Feedback Equally Valued",
+         p5 = "Women & Men: Equal Awareness of Sanitation Rights",
+         hw1 = "Worry About Water Supply",
+         hw2 = "Supply Interruptions",
+         hw2a = "Supply Interruptions: Expected or Unexpected",
+         hw3 = "Unable to do Laundry Due to Water Situation",
+         hw4 = "Schedule Change Due to Water Situation",
+         hw5 = "Change What Was Eaten Due to Water Situation",
+         hw6 = "Unable to Wash Hands After Dirty Activity",
+         hw7 = "Unable to Wash Body Due to Water Situation",
+         hw8 = "Not Enough Water to Drink",
+         hw9 = "Felt Anger About Water Situation",
+         hw10 = "Gone to Sleep Thirsty",
+         hw11 = "No Useable or Drinkable Water",
+         hw12 = "Felt Shame About Water Situation",
+         hw13 = "Asked to Borrow Water",
+         wat1 = "Drinking Water: Primary Source",
+         wat2 = "Drinking Water: Secondary Source",
+         wat3 = "Non-drinking Water: Primary Source",
+         wat4 = "Drinking Water: Time to Source (mins)",
+         wat5 = "Drinking Water: No.of Trips",
+         wat9 = "Non-drinking Water: Time to Source (mins)",
+         wat10 = "Non-drinking Water: No.of Trips",
+         wat15_8 = "Fewest Water Problems: August",
+         liv3 = "Income Generation: Primary Water Source",
+         wb3 = "General Health",
+         wb4 = "No. Days Poor Physical Health",
+         wb5 = "No. Days Poor Mental Health",
+         wb6 = "No. Days Health Prevented Normal Activities",
+         wb7 = "Feel Unable to Control Important Things",
+         wb8 = "Feel Confident in Ability to Control Problems",
+         wb9 = "Feel Things Going Your Way",
+         wb10 = "Feel Difficulties Could Not Be Overcome"
+         )
+    
+# Add newly created variables
+q_data <- q_data %>% mutate(
+  sd5_ = "Household: Ensures Sufficient Water",
+  sd6_ = "Household: Children Under 18",
+  wat12_ = "Drinking Water Treatment",
+  wat12_6_ = "Drinking Water Treatment: Multiple Methods",
+  wat15_ = "Fewest Water Problems",
+  hw = "Calculated HWISE Score",
+  liv1_ = "Income Generation",
+  liv1_10_ = "Income Generation: Multiple Activities",
+  liv4_ = "Income Generation: Problematic Water Quantity or Quality",
+  wat5a = "Drinking Water: Collection Time Per Week (mins)",
+  wat5b = "Drinking Water: Collection Time Per Week (grouped)"
+) %>%
+  relocate(sd5_, .after = sd4) %>%
+  relocate(sd6_, .after = sd5_) %>%
+  relocate(wat12_, .before = wat12_1) %>%
+  relocate(wat12_6_, .after = wat12_5) %>%
+  relocate(wat15_, .before = wat15_1) %>%
+  relocate(hw, .before = hw1) %>%
+  relocate(liv1_, .before = liv1_1) %>%
+  relocate(liv1_10_, .after = liv1_9) %>%
+  relocate(liv4_, .after = liv3) %>%
+  relocate(wat5a, .after = wat5) %>%
+  relocate(wat5b, .after = wat5a)
+
+kable(head(q_data)) %>%
+  kable_styling("striped", "condensed", full_width = FALSE) %>%
+  scroll_box(width = "100%", height = "400px")
+```
+
+------------------------------------------------------------------------
+
+#### Text Data
+
+A `text_data` object is created to store all data as readable text responses. This dataset is called to render intelligible labels and axis ticks during plot and visualisation creation. Data is read from the original Excel sheet and the following transformations applied:
+
+-   Columns matched to `num_data` content.
+-   Numeric response data converted to intelligible text responses.
+-   String formatting including:
+    -   Capitalisation correction.
+    -   Special character removal.
+    -   Modifications to ensure brevity, consistency and enhance readability.
+
+```{r text_data}
+# Read Excel
+text_data <- try(xl.read.file("../data/demo_data.xlsx",
+                 header = FALSE,
+                 password =  "password",
+                 top.left.cell = "A3")) # ignores row 1 & 2 (chr), ensures single accurate class per col
+
+# Set colnames as question codes
+colnames(text_data) <- colnames(raw_data)
+
+# match cols to data in clean.data
+text_data <- text_data[, colnames(text_data) %in% colnames(num_data)]
+
+# Add newly created variables
+`%!in%` <- Negate(`%in%`) # create 'not in' function
+text_data <- bind_cols(text_data, num_data[, colnames(num_data) %!in% colnames(text_data)])
+text_data <- text_data %>%
+  relocate(sd5_, .after = sd4) %>%
+  relocate(sd6_, .after = sd5_) %>%
+  relocate(wat12_, .before = wat12_1) %>%
+  relocate(wat12_6_, .after = wat12_5) %>%
+  relocate(wat15_, .before = wat15_1) %>%
+  relocate(hw, .before = hw1) %>%
+  relocate(liv1_, .before = liv1_1) %>%
+  relocate(liv1_10_, .after = liv1_9) %>%
+  relocate(liv4_, .after = liv3) %>%
+  relocate(wat5a, .after = wat5) %>%
+  relocate(wat5b, .after = wat5a)
+
+# Insert correct text responses
+text_data$camp <- num_data$camp
+text_data$sd11_2 <- num_data$sd11_2
+
+text_data$sd5_ <- sapply(text_data$sd5_, function(x) {
+  switch(x, "Self", "Spouse", "Children: Boy", "Children: Girl", "Other", "Shared Responsibility")})
+
+text_data$sd9 <- num_data$sd9
+
+## Define a list of all binary questions to format together
+binary_q <- c("sd11","sd15","sd17","sd18","sd19","w1_1","w2","w3","w4","w5",
+              "w6","w7","wat6","wat7","wat11","wat12_1","wat12_2","wat12_3","wat12_4",
+              "wat12_5","wat12_6_","wat15_1","wat15_2","wat15_3","wat15_4","wat15_5","wat15_6",
+              "wat15_7","wat15_8","wat15_9","wat15_10","wat15_11","wat15_12","liv1_1","liv1_2",
+              "liv1_3","liv1_4","liv1_5","liv1_6","liv1_7","liv1_8","liv1_9","liv1_10_","liv2")
+## format all binaries
+text_data[binary_q] <- lapply(text_data[binary_q], function(x){
+  x = replace(x, which(x==0),"No")
+  x = replace(x, which(x==1),"Yes")
+  x = replace(x, which(x==2),"Don't Know")
+  x = replace(x, which(x==88),"NA")})
+
+text_data$sd20 <- sapply(text_data$sd20, function(x) {
+  x = replace(x, which(x==1),"Wood")
+  x = replace(x, which(x==2),"Gas Bottles")
+  x = replace(x, which(x==3),"Other")}) 
+
+text_data[c("wat1","wat2","wat3","liv3")] <- lapply(text_data[c("wat1","wat2","wat3","liv3")], function(x){
+  x = replace(x, which(x==1),"Piped Supply")
+  x = replace(x, which(x==2),"Stand Pipe")
+  x = replace(x, which(x==3),"Borehole/Tubewell")
+  x = replace(x, which(x==4),"Dug Well: Protected")
+  x = replace(x, which(x==5),"Dug Well: Unrotected")
+  x = replace(x, which(x==6),"Spring: Protected")
+  x = replace(x, which(x==7),"Spring: Unprotected")
+  x = replace(x, which(x==8),"Rainwater Collection")
+  x = replace(x, which(x==9),"Small Water Vendor")
+  x = replace(x, which(x==10),"Tanker Truck")
+  x = replace(x, which(x==11),"Bottled Water")
+  x = replace(x, which(x==12),"Sachet Water")
+  x = replace(x, which(x==13),"Surface Water/Pond/River/Lake")
+  x = replace(x, which(x==14),"Other Person")
+  x = replace(x, which(x==15),"Other")
+  x = replace(x, which(is.na(x)),"NA")
+})
+## Change to grouped values 
+text_data$wat5b <- sapply(text_data$wat5b, function(x){
+  x = replace(x, which(x==1), "0-100 mins")
+  x = replace(x, which(x==2), "101-200 mins")
+  x = replace(x, which(x==3), "201-300 mins")
+  x = replace(x, which(x==4), "301-400 mins")
+  x = replace(x, which(x==5), "401-500 mins")
+  x = replace(x, which(x==6), "501-600 mins")
+  x = replace(x, which(x==7), "600+ mins")
+})
+
+text_data$wat12_ <- sapply(text_data$wat12_, function(x){
+  switch(x+1, "None","Boil","Filter","Add Chemicals/Chlorine","Other","Combined Methods")})
+
+text_data$wat15_ <- sapply(text_data$wat15_, function(x) {
+  switch(x, "Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec","Multiple Months")})
+
+text_data$liv1_ <- sapply(text_data$liv1_, function(x) {
+  switch(x+1, "None of the Above", "Crop Production","Betel Nut/Leaf Production",
+         "Livestock Production","Salt Production","Sea Fishing","Shrimp Farming",
+         "Fish Farming","Other","Multiple Activities")})
+
+text_data$liv4_ <- sapply(text_data$liv4_, function(x){
+  switch(x+1, "No","Quantity","Quality","Both Quantity & Quality")})
+
+text_data[, grepl("^hw.*\\d$", names(text_data))] <- apply(text_data[, grepl("^hw.*\\d$", names(text_data))], 2, function(x){
+  x = replace(x, which(x=="0_times"), "Never")
+  x = replace(x, which(x=="1-2_times"), "Rarely")
+  x = replace(x, which(x=="3-10_times"), "Sometimes")
+  x = replace(x, which(x=="11-20_times"), "Often")
+  x = replace(x, which(x=="more_than_20_times"), "Always")
+  x = replace(x, which(x=="dont_know"), "Don't Know")
+})
+
+text_data[, grepl("pay", names(text_data))] <- apply(text_data[,grepl("pay", names(text_data))], 2, function(x){
+  x = replace(x, which(x=="Fixed_cost_per_amount"), "Fixed: Per Amount")
+  x = replace(x, which(x=="Fixed_cost_per_month"), "Fixed: Per Month")
+  x = replace(x, which(x=="VC_permonth_on_set_factors"), "Variable: Set Factors")
+  x = replace(x, which(x=="Variable_cost_per_amount_or_use"), "Variable: Per Amount")
+  x = replace(x, which(x=="no_fixed_payment_is_made"), "No Fixed Payment")
+  x = replace(x, which(x=="it_is_free"), "Free")
+})    
+
+text_data <-  text_data %>% mutate(across(where(is.character),
+                            ~ str_replace_all(., "_and_", "_&_") %>%
+                              str_replace_all("_", " ") %>%
+                              str_to_title)) %>% mutate(across(where(is.logical), str_to_title))
+
+text_data <- text_data %>% mutate(across(c("w8","wat8","wat16","wat17","liv6","liv5"), 
+                ~ str_replace_all(., "\n", " ") %>%
+                  str_squish %>%
+                  str_to_sentence))
+
+text_data[is.na(text_data)] <- "NA"
+
+kable(head(text_data)) %>%
+  kable_styling("striped", "condensed", full_width = FALSE) %>%
+  scroll_box(width = "100%", height = "400px")
+```
+***
+
+## Mapping
+<p style="font-size:18pt; font-style:bold; color:#1d6cac">
+    Mapping
+</p>
+
+Interactive mapping of geospatial data is achieved using the `leaflet` library [@cheng_2022]. Layer controls allow the user to select from three different base maps. Polygon layers can be selected to visualise the boundaries of refugee camps [@iscg_2022] and administrative regions [@ocha_2020]. Additional data is imported to enable the user to visualise the locations of existing sanitation facilities [@ocha_2022].
+
+Mapped data points can be colour coded according to any variable in the dataset and an appropriate legend is created.    
+
+All points can be selected to display a tool-tip containing more detailed information.
+
+```{r maps, results = "hide"}
+# Read shape files
+camps <- st_read(dsn = "../data/shapefiles/camp", layer = "T220130_RRC_Outline_Camp_AL1")
+camps <- subset(camps, camps$Upazila=="Teknaf")
+
+unions <- st_read(dsn = "../data/shapefiles/union", layer = "bgd_admbnda_adm4_bbs_20201113")
+unions <- subset(unions, unions$ADM4_EN %in% c("Baharchhara","Nhilla","Sabrang","Teknaf","Teknaf Paurashava","Whykong"))
+
+infra <- st_read(dsn = "../data/shapefiles/infra", layer = "WASH_Infras_LT_Bath_TW_May_31_2022")
+infra <- subset(infra, infra$Upazila=="Teknaf") %>% infra[c(1:33)]
+
+# replacements for consistency
+infra$Type_Faci <- sapply(infra$Type_Faci, function(x) {
+  x = replace(x, which(x=="latrine"),"Latrine")
+  x = replace(x, which(x=="Tubewell-Handpump"), "Handpump Tubewell")
+  x = replace(x, which(x=="Both (Latrine & Bathing)"), "Latrine & Bathing")
+})
+
+# create base map
+base_map <- leaflet(data = text_data) %>% 
+  setView(lng = text_data[1, "gps-longitude"],
+          lat = text_data[1, "gps-latitude"],
+          zoom=12) %>%
+  addTiles(group = "Default Map") %>%
+  addProviderTiles("CartoDB.Positron", group = "Minimal Map") %>%
+  addProviderTiles("Esri.WorldImagery", group = "Satelite Map")%>% 
+  addScaleBar(position = "bottomleft",
+              options = scaleBarOptions(maxWidth=400)) %>%
+  addMiniMap(position = "bottomright", toggleDisplay = TRUE, width = 200) %>%
+  
+# add infrastructure markers  
+  addCircleMarkers(data = infra[infra$Type_Faci=="Bathing Cubicle" | infra$Type_Faci=="Latrine & Bathing", ],
+                       ~Long,
+                       ~Lat,
+                       radius = 3,
+                       stroke = T,
+                       weight = 1, opacity = 1,
+                       fillOpacity = 0,
+                       group = "Bathing Cubicle",
+                       popup=~paste(
+                         "<b>", "Agency: ",Agency,"</b><br/>",
+                         "Facility: ", Type_Faci, "<br/>",
+                         "Sub Type: ",Sub_Type_F, "<br/>",
+                         "Bathing Total: ", Bathing, "<br/>",
+                         "Female: ", Bathing_F, "<br/>",
+                         "Male: ", Bathing_M, "<br/>",
+                         "Universal: ", Bath_gen_u, "<br/>"))%>%
+  addCircleMarkers(data = infra[infra$Type_Faci=="Latrine" | infra$Type_Faci=="Latrine & Bathing", ],
+                       ~Long,
+                       ~Lat,
+                       radius = 3,
+                       stroke = T,
+                       weight = 1, opacity = 1,
+                       fillOpacity = 0,
+                       color="green",
+                       group = "Latrine",
+                       popup=~paste(
+                         "<b>", "Agency: ",Agency,"</b><br/>",
+                         "Facility: ", Type_Faci, "<br/>",
+                         "Sub Type: ",Sub_Type_F, "<br/>",
+                         "Latrines: ", LT, "<br/>",
+                         "Female: ", LT_F, "<br/>",
+                         "Male: ", LT_M, "<br/>",
+                         "Universal: ", LT_Gen_uns, "<br/>",
+                         "Slabs: ", Slabs, "<br/>",
+                         "Rings: ", Rings, "<br/>",
+                         "Structure: ", struc_wall, ", ", struc_pill, "<br/>",
+                         "Volume (m3): ", Volume_M3, "<br/>"))%>%
+  addCircleMarkers(data = infra[infra$Type_Faci=="Handpump Tubewell", ],
+                       ~Long,
+                       ~Lat,
+                       radius = 3,
+                       stroke = T,
+                       weight = 1, opacity = 1,
+                       fillOpacity = 0,
+                       color="red",
+                       group = "Handpump Tubewell",
+                       popup=~paste(
+                         "<b>", "Agency: ",Agency,"</b><br/>",
+                         "Facility: ", Type_Faci, "<br/>",
+                         "Sub Type: ",Sub_Type_F, "<br/>",
+                         "TW_Depth: ", Depth_TW_F, "<br/>"))%>%
+# add polygons
+  addPolygons(data = camps,
+                  color = "#800080", weight = 2, smoothFactor = 0.5, opacity = 1, 
+                  fill= FALSE, group = "Camp Boundaries") %>%
+  addPolygons(data = unions,
+                  color = "#cc0000", weight = 2, smoothFactor = 0.5, opacity = 1, 
+                  fill= FALSE, group = "Administrative Boundaries") %>%
+
+# add UI toggles  
+  addLayersControl(baseGroups = c("Default Map","Satelite Map", "Minimal Map"),
+                       overlayGroups = c("Camp Boundaries", "Administrative Boundaries", "Bathing Cubicle", "Latrine", "Handpump Tubewell"),
+                       options = layersControlOptions(collapsed = FALSE)) %>%
+  hideGroup(c("Bathing Cubicle", "Latrine", "Handpump Tubewell"))
+
+pal1 <- colorRampPalette(c("#cc0000","#ff1a1a","#ffa500","#ffd700","#00ff00","#00ced1","#003366"))
+# colorData <- filtered_data()[[input$circle_color]]
+color <- colorNumeric(rev(pal1(6)), domain = num_data[["hw"]])
+legend_vals = text_data[["hw"]]
+      
+m1 <- base_map %>%
+      addCircleMarkers(data = text_data,
+                       text_data[, "gps-longitude"],
+                       text_data[, "gps-latitude"],
+                       radius = 4,
+                       stroke = FALSE,
+                       group = "points",
+                       fillOpacity=1,
+                       popup = ~paste(
+                         "<b>", "HWISE Score: ","</b>",hw,"<br/>",
+                         "<b>","Primary source (drinking): ","</b>",wat1, "<br/>",
+                         "<b>","Primary source (non-drinking): ","</b>",wat3, "<br/>",
+                         "<b>","Collection Time (drinking, weekly): ","</b>",wat5a, "<br/>",
+                         "<b>","Treatment (drinking): ","</b>",wat12_, "<br/>",
+                         "<b>","Quality problems: ","</b>",wat8, "<br/>",
+                         "<b>","Supply interruptions: ","</b>",hw2, "<br/>",
+                         "<b>","No useable/drinkable water: ","</b>",hw11, "<br/>",
+                         "<b>","Borrow water: ","</b>",hw13, "<br/>"
+                       ),
+                       color = ~color(text_data[["hw"]])) %>%
+      addLegend("topright",
+                pal=color,
+                values=legend_vals,
+                opacity = 1,
+                title=q_data[["hw"]],
+                layerId="colorLegend")
+  
+
+```
+<p style="font-size:18pt; font-style:bold; color:#1d6cac">
+    Example Map (interactive)
+</p>
+
+An example map illustrating mapped points colour-coded according to overall water insecurity score.
+```{r map_show, out.width = "100%", fig.height = 7, echo = FALSE}
+m1
+```
+***
+
+## Graphing {.tabset .tabset-fade .tabset-pills}
+<p style="font-size:18pt; font-style:bold; color:#1d6cac">
+    Graphing
+</p>
+
+
+Plots are created using the `ggplot2` library [@wickham_2016]. Three chart types, commensurate with end user's statistical knowledge, can be generated.    
+
+All displayed variables can be configured by the user including x and y variables (where relevant) as well as an optional third grouping variable.
+
+All charts are rendered as interactive objects through the use of the `plotly` library [@sievert_2020]. Interactive features include:
+
+-   Tool-tips displayed on hover-over.
+-   Click and drag to zoom.
+-   Clickable legend to toggle chart elements.
+-   Export plot to .png
+
+<p style="font-size:18pt; font-style:bold; color:#1d6cac">
+    Example Plots (interactive)
+</p>
+
+```{r plot_theme}
+# Set theme 
+my_theme <- theme(plot.title = element_text(size=13, color="#464646",face="bold", hjust=0.5),
+                  axis.title = element_text(size=13, color="#464646"),
+                  axis.text = element_text(size=12, color="#464646"),
+                  axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+                  legend.title = element_text(size=13, color="#464646",face="bold",hjust=0.5),
+                  legend.text = element_text(size=12, color="#464646"),
+                  legend.background = element_rect(fill = "#f2f2f2"),
+                  panel.background = element_rect(fill = "#f2f2f2"),
+                  plot.margin = margin(1,1,1,1, "cm"))
+
+paletteFunc <- colorRampPalette(c("#18db50","#1d6cac","#00b4ff"))
+```
+
+### Bar Plot
+
+```{r bar_plot, fig.height = 8, out.width = "100%"}
+p1 <- # categorical x, not grouped
+      num_data %>% 
+      ggplot +
+      aes(factor(hw2)) +
+      geom_bar()+
+      geom_bar(fill = paletteFunc(length(unique(num_data[["hw2"]])))) +
+      scale_x_discrete(breaks = num_data[["hw2"]],
+                       labels = text_data[["hw2"]]) +
+      labs(title = paste0(q_data["hw2"]),
+           x = NULL) +
+      my_theme
+      
+ggplotly(p1, tooltip = "y")
+```
+***
+
+### Box Plot
+
+```{r box_plot, fig.height = 8, out.width = "100%", warning = FALSE}
+p2 <- num_data %>% 
+  ggplot +
+  aes(x = factor(hw1), y = hw, fill = location)+
+  geom_boxplot(varwidth = TRUE,
+               alpha = 0.8,
+               outlier.size = 2,
+               outlier.shape = 8,
+               outlier.colour = "black") +
+  labs(title = paste0(q_data["hw1"]),
+       x = NULL,
+       y = paste0(q_data["hw"]),
+       fill = "")+
+    scale_fill_manual(values = paletteFunc(length(levels(factor(num_data[["location"]]))))) +
+          scale_x_discrete(breaks = num_data[["hw1"]], 
+                           labels = text_data[["hw1"]]) +
+          #scale_y_continuous(breaks = seq(0,max(y,na.rm=T),ceiling(max(y,na.rm=T)/10))) +
+          my_theme
+  
+ggplotly(p2) %>% layout(boxmode = "group")
+```
+***
+
+### Scatter Plot
+
+```{r scat_plot, fig.height = 8, out.width = "100%", message = FALSE}
+p3 <- num_data %>%
+  ggplot +
+  aes(x = wat5, y = hw, color = camp) +
+  geom_jitter(size = 1, width=0.1, height=0.1 )+
+  geom_smooth(method = lm, color = "#ffa500") +
+  labs(title = paste0(q_data[["wat5"]], " ~ ",q_data[["hw"]]),
+       x = paste0(q_data[["wat5"]]),
+       y = paste0(q_data[["hw"]]),
+       color = paste0(q_data[["camp"]]))  + 
+  scale_color_manual(values = paletteFunc(length(unique(num_data[["camp"]])))) + 
+  my_theme
+  
+ggplotly(p3) %>% layout(legend = list(font = list(size = 12)))
+```
+***
+
+## Summary Statistics {.tabset .tabset-fade .tabset-pills}
+<p style="font-size:18pt; font-style:bold; color:#1d6cac">
+    Summary Statistics
+</p>
+
+Summary statistics are generated using the `skimR` library [@waring_2022]. Given the end users' limited statistical knowledge, extensive descriptive statistics are not required. Range, mean, median and standard deviation provide a sufficient summary of central tendency and variation of data that is in-line with users' existing knowledge.
+
+Statistics for numeric and categorical data are displayed separately and provide the user with greater control over which data are displayed. An optional grouping variable can be selected and applied to display summary statistics according to specified subgroups.
+
+```{r stats}
+# Define custom skim (display full names for factor levels in cat data)
+my_skim <- skim_with(factor = sfl(top_counts = ~top_counts(., max_char = 25, max_levels = 50)),numeric = list(hist = NULL))
+
+# create all summary stats
+sum_df <- text_data %>%
+      mutate(across(which(sapply(.,class)!="numeric"),factor)) %>%
+      select(-c("gps-longitude","gps-latitude",sd11_3,w8,wat8,wat16,wat17,liv5,liv6)) %>%
+      #group_by_at(group_val) %>%
+      my_skim %>%
+      focus(c(
+        skim_variable,
+        #all_of(group_val),
+        n_missing,
+        numeric.mean,
+        numeric.p0,
+        numeric.p50,
+        numeric.p100,
+        numeric.sd,
+        factor.n_unique,
+        factor.top_counts))
+
+# rename columns
+sum_df <- data.frame(sum_df) %>%
+  rename("Type" = "skim_type",
+         "Variable" = "skim_variable",
+         "Missing" = "n_missing",
+         "Mean" = "numeric.mean",
+         "Min" = "numeric.p0",
+         "Median" = "numeric.p50",
+         "Max" = "numeric.p100",
+         "Standard Deviation" = "numeric.sd",
+         "Category Levels" = "factor.n_unique",
+         "Category Level Counts" = "factor.top_counts")
+
+# round numeric data
+sum_df <- sum_df %>% mutate_if(is.numeric, round, 1)
+
+```
+
+### Numeric Data
+
+```{r stats_cat}
+# numeric data
+sum_num <- sum_df%>%
+  filter(Type == "numeric") %>%
+  select(-c(`Category Levels`,`Category Level Counts`, `Type`))%>%
+  mutate(Question = sapply(Variable, function(x) q_data[[x]])) %>% # add question text column
+  relocate(Question, .after = Variable)
+
+kable(sum_num) %>%
+  kable_styling("striped", "condensed", full_width = FALSE) %>%
+  scroll_box(width = "100%", height = "400px")
+```
+***
+
+### Categorical Data
+
+```{r stats_num}
+# categorical data 
+sum_cat <- sum_df%>%
+  filter(Type == "factor") %>%
+  select(-c(`Type`,`Mean`,`Min`,`Median`, `Max`, `Standard Deviation`))%>%
+  mutate(Question = sapply(Variable, function(x) q_data[[x]])) %>% # add question text column
+  relocate(Question, .after = Variable)
+
+kable(sum_cat) %>%
+  kable_styling("striped", "condensed", full_width = FALSE) %>%
+  scroll_box(width = "100%", height = "400px")
+```
+***
+
+### Grouped Statistics
+
+The optional grouping variable can be applied to statistics of either variable class. Below demonstrates numeric statistics grouped using the 'location' variable:
+
+```{r stats_group}
+# create all summary stats
+group_df <- text_data %>%
+      mutate(across(which(sapply(.,class)!="numeric"),factor)) %>%
+      select(-c("gps-longitude","gps-latitude",sd11_3,w8,wat8,wat16,wat17,liv5,liv6)) %>%
+      group_by_at("location") %>%
+      my_skim %>%
+      focus(c(
+        skim_variable,
+        all_of("location"),
+        n_missing,
+        numeric.mean,
+        numeric.p0,
+        numeric.p50,
+        numeric.p100,
+        numeric.sd,
+        factor.n_unique,
+        factor.top_counts))
+
+# rename columns
+group_df <- data.frame(group_df) %>%
+  rename("Type" = "skim_type",
+         "Variable" = "skim_variable",
+         "Location" = "location",
+         "Missing" = "n_missing",
+         "Mean" = "numeric.mean",
+         "Min" = "numeric.p0",
+         "Median" = "numeric.p50",
+         "Max" = "numeric.p100",
+         "Standard Deviation" = "numeric.sd",
+         "Category Levels" = "factor.n_unique",
+         "Category Level Counts" = "factor.top_counts")
+
+# round numeric data
+group_df <- group_df %>% mutate_if(is.numeric, round, 1)
+
+# group by location
+sum_group <- group_df%>%
+  filter(Type == "numeric") %>%
+  select(-c(`Category Levels`,`Category Level Counts`, `Type`))%>%
+  mutate(Question = sapply(Variable, function(x) q_data[[x]])) %>% # add question text column
+  relocate(Question, .after = Variable)
+
+kable(sum_group) %>%
+  kable_styling("striped", "condensed", full_width = FALSE) %>%
+  scroll_box(width = "100%", height = "400px")
+```
+***
+## References
