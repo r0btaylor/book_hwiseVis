@@ -890,11 +890,16 @@ All points can be selected to display a tool-tip containing more detailed inform
 # Read shape files
 camps <- st_read(dsn = "../data/shapefiles/camp", layer = "T220130_RRC_Outline_Camp_AL1")
 camps <- subset(camps, camps$Upazila=="Teknaf")
-
-unions <- st_read(dsn = "../data/shapefiles/union", layer = "bgd_admbnda_adm4_bbs_20201113")
+  
+file<-tempdir()
+unzip("../data/shapefiles/union/bgd_admbnda_adm4_bbs_20201113.zip", exdir=file)
+unions <- st_read(dsn = file, layer = "bgd_admbnda_adm4_bbs_20201113")
 unions <- subset(unions, unions$ADM4_EN %in% c("Baharchhara","Nhilla","Sabrang","Teknaf","Teknaf Paurashava","Whykong"))
 
-infra <- st_read(dsn = "../data/shapefiles/infra", layer = "WASH_Infras_LT_Bath_TW_May_31_2022")
+file1<-tempdir()
+unzip("../data/shapefiles/infra/WASH_Infras_LT_Bath_TW_May_31_2022A.zip", exdir=file1)
+unzip("../data/shapefiles/infra/WASH_Infras_LT_Bath_TW_May_31_2022B.zip", exdir=file1)
+infra <- st_read(dsn = file1, layer = "WASH_Infras_LT_Bath_TW_May_31_2022")
 infra <- subset(infra, infra$Upazila=="Teknaf") %>% infra[c(1:33)]
 
 # replacements for consistency
